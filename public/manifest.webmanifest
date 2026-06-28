@@ -1,0 +1,13 @@
+{
+  "name": "Lifelog",
+  "short_name": "Lifelog",
+  "description": "紙のような質感で一日を記録するライフログアプリ",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f3e9d4",
+  "theme_color": "#f3e9d4",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}

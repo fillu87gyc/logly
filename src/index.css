@@ -1,0 +1,102 @@
+:root {
+  --paper: #f3e9d4;
+  --paper-card: #fefcf8;
+  --ink: #1c1917;
+  --ink-soft: #57534e;
+  --ink-faint: #78716c;
+  --ink-mute: #a8a29e;
+  --hairline: rgba(120, 80, 30, 0.12);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: 'Inter', 'Noto Sans JP', -apple-system, 'Hiragino Kaku Gothic ProN', sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+#root {
+  min-height: 100svh;
+}
+
+button {
+  font-family: inherit;
+}
+
+.mi,
+.mir {
+  font-weight: normal;
+  font-style: normal;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-feature-settings: 'liga';
+  -webkit-font-smoothing: antialiased;
+}
+
+.mi {
+  font-family: 'Material Icons Outlined';
+}
+
+.mir {
+  font-family: 'Material Icons Round';
+}
+
+@keyframes ll-fade {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes ll-rise {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes ll-scrim {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes ll-sheet {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: none;
+  }
+}
+
+.ll-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.ll-scroll {
+  scrollbar-width: none;
+}
