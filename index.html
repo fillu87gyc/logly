@@ -10,9 +10,12 @@
     <meta name="apple-mobile-web-app-title" content="Lifelog" />
     <link rel="apple-touch-icon" href="/icon.svg" />
     <link rel="manifest" href="/manifest.webmanifest" />
+    <!-- Material Icons は public/fonts/ から自己ホスト（CDN 障害でアイコンがリテラル文字に落ちないようにする） -->
+    <link rel="preload" href="/fonts/material-icons-outlined.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/fonts/material-icons-round.woff2" as="font" type="font/woff2" crossorigin />
+    <!-- 本文フォントは引き続き Google Fonts。未到達時はシステムフォントへフォールバック -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined|Material+Icons+Round" />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;700&family=Noto+Serif+JP:wght@500;700&family=Fraunces:opsz,wght@9..144,500;9..144,700&display=swap" rel="stylesheet" />
     <title>Lifelog</title>
   </head>
