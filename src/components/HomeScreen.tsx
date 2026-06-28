@@ -1,12 +1,14 @@
 import { Icon } from './Icon'
-import { DAYSTRIP, ENTRIES, SUMMARY } from '../lib/data'
+import { DAYSTRIP, SUMMARY } from '../lib/data'
+import type { Entry } from '../lib/types'
 
 interface HomeScreenProps {
+  entries: Entry[]
   onOpenAI: () => void
   onOpenDetail: (index: number) => void
 }
 
-export function HomeScreen({ onOpenAI, onOpenDetail }: HomeScreenProps) {
+export function HomeScreen({ entries, onOpenAI, onOpenDetail }: HomeScreenProps) {
   return (
     <div className="ll-scroll" style={{ flex: 1, overflowY: 'auto', padding: '0 0 120px', animation: 'll-fade 220ms ease both' }}>
       {/* header */}
@@ -62,9 +64,9 @@ export function HomeScreen({ onOpenAI, onOpenDetail }: HomeScreenProps) {
 
       {/* timeline */}
       <div style={{ padding: '4px 24px 24px' }}>
-        {ENTRIES.map((e, i) => (
+        {entries.map((e, i) => (
           <div
-            key={e.time}
+            key={e.time + i}
             onClick={() => onOpenDetail(i)}
             style={{ display: 'grid', gridTemplateColumns: '56px 1fr', gap: 14, padding: '4px 0', cursor: 'pointer' }}
           >
