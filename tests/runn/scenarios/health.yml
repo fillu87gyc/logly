@@ -1,0 +1,14 @@
+desc: GET /api/health は認証不要で 200 を返す
+runners:
+  req:
+    endpoint: http://127.0.0.1:8787
+steps:
+  ok:
+    desc: ヘルスチェック
+    req:
+      /api/health:
+        get:
+          body: null
+    test: |
+      current.res.status == 200
+      && current.res.body.ok == true

@@ -1,0 +1,63 @@
+desc: /api/stats – 週次は 7 本 / 月次は範囲日数 / カテゴリ内訳に作成分が乗る
+runners:
+  req:
+    endpoint: http://127.0.0.1:8787
+vars:
+  refDate: "2030-04-15"
+steps:
+  seed_work:
+    req:
+      /api/entries:
+        post:
+          body:
+            application/json:
+              occurredAt: "{{ vars.refDate }}T08:00"
+              category: work
+              title: "stats シード work"
+    test: current.res.status == 201
+  seed_food:
+    req:
+      /api/entries:
+        post:
+          body:
+            application/json:
+              occurredAt: "{{ vars.refDate }}T12:00"
+              category: food
+              title: "stats シード food"
+    test: current.res.status == 201
+  weekly:
+    desc: range=w は bars が 7 本
+    req:
+      /api/stats?range=w&date={{ vars.refDate }}:
+        get:
+          body: null
+    test: |
+      current.res.status == 200
+      && current.res.body.range == "w"
+      && len(current.res.body.bars) == 7
+      && current.res.body.total >= 2
+      && len(filter(current.res.body.categoryBreakdown, {.key == "work"})) == 1
+      && len(filter(current.res.body.categoryBreakdown, {.key == "food"})) == 1
+  monthly:
+    desc: range=m は当該月の日数ぶん bars が返る
+    req:
+      /api/stats?range=m&date={{ vars.refDate }}:
+        get:
+          body: null
+    test: |
+      current.res.status == 200
+      && current.res.body.range == "m"
+      && len(current.res.body.bars) == 30
+      && current.res.body.total >= 2
+  yearly:
+    desc: range=y は当該年の日数ぶん（2030 年は非閏年なので 365 本）
+    req:
+      /api/stats?range=y&date={{ vars.refDate }}:
+        get:
+          body: null
+    test: |
+      current.res.status == 200
+      && current.res.body.range == "y"
+      && len(current.res.body.bars) == 365
+      && current.res.body.from == "2030-01-01"
+      && current.res.body.to == "2030-12-31"

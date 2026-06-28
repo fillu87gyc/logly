@@ -1,0 +1,89 @@
+desc: Entry の作成 → 一覧 → 編集 → 一覧 → 削除 → 一覧（CRUD ライフサイクル）
+runners:
+  req:
+    endpoint: http://127.0.0.1:8787
+vars:
+  testDate: "2030-01-01"
+  movedDate: "2030-01-11"
+steps:
+  create:
+    desc: POST /api/entries で作成し 201 と id を受け取る
+    req:
+      /api/entries:
+        post:
+          body:
+            application/json:
+              occurredAt: "{{ vars.testDate }}T08:30"
+              category: work
+              title: "runn で作成した記録"
+              note: "外部プロセス経由"
+              meta:
+                - icon: schedule
+                  text: "30分"
+    test: |
+      current.res.status == 201
+      && current.res.body.id != ""
+  list_after_create:
+    desc: GET /api/entries?date= で 1 件返る
+    req:
+      /api/entries?date={{ vars.testDate }}:
+        get:
+          body: null
+    test: |
+      current.res.status == 200
+      && len(current.res.body) == 1
+      && current.res.body[0].title == "runn で作成した記録"
+      && current.res.body[0].time == "08:30"
+      && current.res.body[0].category == "work"
+      && current.res.body[0].categoryLabel == "仕事"
+      && current.res.body[0].icon == "laptop_mac"
+      && len(current.res.body[0].meta) == 1
+      && current.res.body[0].meta[0].text == "30分"
+  edit:
+    desc: PUT で別カテゴリ・別日付に書き換える
+    req:
+      /api/entries/{{ steps.create.res.body.id }}:
+        put:
+          body:
+            application/json:
+              occurredAt: "{{ vars.movedDate }}T12:30"
+              category: food
+              title: "編集後タイトル"
+    test: current.res.status == 204
+  list_old_date_empty:
+    desc: 旧日付からは消えている
+    req:
+      /api/entries?date={{ vars.testDate }}:
+        get:
+          body: null
+    test: |
+      current.res.status == 200
+      && len(current.res.body) == 0
+  list_new_date_present:
+    desc: 新日付に出現し category も food になっている
+    req:
+      /api/entries?date={{ vars.movedDate }}:
+        get:
+          body: null
+    test: |
+      current.res.status == 200
+      && len(current.res.body) == 1
+      && current.res.body[0].title == "編集後タイトル"
+      && current.res.body[0].category == "food"
+      && current.res.body[0].time == "12:30"
+  delete:
+    desc: DELETE で 204
+    req:
+      /api/entries/{{ steps.create.res.body.id }}:
+        delete:
+          body: null
+    test: current.res.status == 204
+  list_after_delete:
+    desc: 削除後は一覧から消える
+    req:
+      /api/entries?date={{ vars.movedDate }}:
+        get:
+          body: null
+    test: |
+      current.res.status == 200
+      && len(current.res.body) == 0
