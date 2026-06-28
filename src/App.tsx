@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { HomeScreen } from './components/HomeScreen'
 import { CalendarScreen } from './components/CalendarScreen'
 import { StatsScreen } from './components/StatsScreen'
@@ -8,12 +8,27 @@ import { AddModal } from './components/AddModal'
 import { AIModal } from './components/AIModal'
 import { DetailModal } from './components/DetailModal'
 import { ENTRIES } from './lib/data'
-import type { Modal, Tab } from './lib/types'
+import { api, apiEntryToEntry } from './lib/api'
+import type { Entry, Modal, Tab } from './lib/types'
 
 function App() {
   const [tab, setTab] = useState<Tab>('home')
   const [modal, setModal] = useState<Modal>(null)
   const [selectedEntry, setSelectedEntry] = useState(0)
+  // エントリは API から取得。失敗時はモック（ENTRIES）にフォールバックして UI を保つ。
+  const [entries, setEntries] = useState<Entry[]>(ENTRIES)
+
+  useEffect(() => {
+    const today = new Date().toISOString().slice(0, 10)
+    api
+      .listEntriesByDay(today)
+      .then((rows) => {
+        if (rows.length > 0) setEntries(rows.map(apiEntryToEntry))
+      })
+      .catch(() => {
+        /* バックエンド未接続時はモックのまま */
+      })
+  }, [])
 
   const openAdd = () => setModal('add')
   const openAI = () => setModal('ai')
@@ -45,7 +60,7 @@ function App() {
         }}
       />
 
-      {tab === 'home' && <HomeScreen onOpenAI={openAI} onOpenDetail={openDetail} />}
+      {tab === 'home' && <HomeScreen entries={entries} onOpenAI={openAI} onOpenDetail={openDetail} />}
       {tab === 'calendar' && <CalendarScreen />}
       {tab === 'stats' && <StatsScreen />}
       {tab === 'profile' && <ProfileScreen />}
@@ -60,7 +75,7 @@ function App() {
 
       {modal === 'add' && <AddModal onClose={closeModal} onOpenAI={openAI} />}
       {modal === 'ai' && <AIModal onClose={closeModal} />}
-      {modal === 'detail' && <DetailModal entry={ENTRIES[selectedEntry]} onClose={closeModal} />}
+      {modal === 'detail' && <DetailModal entry={entries[selectedEntry]} onClose={closeModal} />}
 
       <TabBar tab={tab} onTab={setTab} onOpenAdd={openAdd} />
     </div>

@@ -1,0 +1,16 @@
+name = "logly-api"
+main = "src/index.ts"
+compatibility_date = "2024-12-01"
+compatibility_flags = ["nodejs_compat"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "logly"
+database_id = "00000000-0000-0000-0000-000000000000" # `wrangler d1 create logly` で発行された ID に差し替える
+migrations_dir = "migrations"
+
+[vars]
+ENV = "production"
+ACCESS_TEAM_DOMAIN = "your-team.cloudflareaccess.com"
+ACCESS_AUD = "replace-with-application-audience-tag"
+ALLOWED_EMAIL = "you@example.com"
