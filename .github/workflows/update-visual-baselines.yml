@@ -1,0 +1,52 @@
+name: Update visual baselines
+
+on:
+  workflow_dispatch:
+
+# 視覚リグレッションのベースラインを CI 環境（Ubuntu runner / 実際の Google Fonts 配信）で
+# 再生成して、対象ブランチにそのままコミットし返す one-shot ワークフロー。
+# sandbox とフォント描画が違うため、ローカル生成では CI と差分が出てしまう問題への対策。
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install root deps
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Build SPA
+        run: npm run build
+
+      - name: Regenerate visual baselines
+        env:
+          CI: 'true'
+        run: npx playwright test visual --update-snapshots
+
+      - name: Commit and push baselines (if changed)
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add tests/e2e/navigation/visual.spec.ts-snapshots/
+          if git diff --cached --quiet; then
+            echo "no baseline changes"
+          else
+            git commit -m "chore(e2e): regenerate visual baselines in CI"
+            git push
+          fi
