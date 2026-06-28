@@ -2,23 +2,20 @@ import type { Page } from '@playwright/test'
 
 /**
  * 画面リグレッション安定化のための準備:
- * - 外部フォント / Material Icons など、ネットワーク状況に左右される CSS とフォントを遮断
- * - PWA SW を抑止
- * - フォントの読込フェーズを待ち、サブピクセル差を最小化
  * - 時計を固定（今日表示の壁時計依存を排除）
+ * - PWA SW を抑止（fetch を勝手に握らせない）
  *
- * これで CI / ローカルでも同じ「フォールバック・フォント + 文字どおりの "add" 表記」で
- * 描画される。Material Symbols のグリフではなく "add"/"close" 等のテキストが表示されるが、
- * 画面遷移リグレッションを検出する目的では十分。
+ * 外部フォント（Google Fonts / Material Symbols）はあえて遮断しない。
+ * 遮断するとアイコンがリテラル文字（"add", "close", ...）で出てしまい、
+ * 本番では絶対に出ない見た目を「正解」にしてしまうため。
+ * 描画安定化は `settle()` で `document.fonts.ready` を待って実現する。
+ *
+ * → Google Fonts に到達できない環境では視覚スナップショットは失敗する。
+ *   ネットワーク到達性は本番でも前提なので、これは妥当な失敗。
  */
 export async function prepareForSnapshot(page: Page): Promise<void> {
   await page.clock.setFixedTime(new Date('2026-06-28T08:30:00'))
 
-  // 外部フォント / アイコン CSS / Google CSS を遮断
-  await page.route(/fonts\.(googleapis|gstatic)\.com/, (route) => route.abort())
-  await page.route(/cdn\.jsdelivr\.net/, (route) => route.abort())
-
-  // PWA SW の登録を抑止（registerSW.js も含む）
   await page.addInitScript(() => {
     Object.defineProperty(navigator, 'serviceWorker', {
       configurable: true,
@@ -27,8 +24,20 @@ export async function prepareForSnapshot(page: Page): Promise<void> {
   })
 }
 
-/** ページ遷移後にフォント読込フェーズの解決を待つ。 */
+/**
+ * フォント読込・ネットワーク・レイアウト計算がすべて落ち着くのを待つ。
+ * Material Symbols が読み込まれてアイコンがグリフ表示になってから返る。
+ */
 export async function settle(page: Page): Promise<void> {
   await page.waitForLoadState('networkidle')
-  await page.evaluate(() => document.fonts.ready)
+  await page.evaluate(async () => {
+    await document.fonts.ready
+    // Material Symbols（mi / mir クラス）が解決されるまで明示的に待つ
+    await Promise.all([
+      document.fonts.load("16px 'Material Icons Outlined'").catch(() => undefined),
+      document.fonts.load("16px 'Material Icons Round'").catch(() => undefined),
+    ])
+    // フォント差し替えに伴うレイアウト確定を 2 フレーム待つ
+    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() => r(undefined))))
+  })
 }
