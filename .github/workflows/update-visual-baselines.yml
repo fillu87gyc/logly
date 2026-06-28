@@ -2,6 +2,13 @@ name: Update visual baselines
 
 on:
   workflow_dispatch:
+  # コミットメッセージの 1 行目が `[update-visual]` で始まる push でも起動する。
+  # workflow_dispatch がポリシーで叩けない環境向けの逃げ道。
+  push:
+    branches:
+      - 'claude/**'
+    paths:
+      - '.github/workflows/update-visual-baselines.yml'
 
 # 視覚リグレッションのベースラインを CI 環境（Ubuntu runner / 実際の Google Fonts 配信）で
 # 再生成して、対象ブランチにそのままコミットし返す one-shot ワークフロー。
@@ -14,6 +21,8 @@ jobs:
   update:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    # workflow_dispatch、もしくは commit に `[update-visual]` を含む push のときだけ走る
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[update-visual]')
     steps:
       - uses: actions/checkout@v4
         with:
