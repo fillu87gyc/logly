@@ -1,0 +1,66 @@
+desc: 入力検証 – Zod / DomainError 由来の 400 と存在しない Entry の 404
+runners:
+  req:
+    endpoint: http://127.0.0.1:8787
+steps:
+  empty_title:
+    desc: 空タイトルは Zod で 400
+    req:
+      /api/entries:
+        post:
+          body:
+            application/json:
+              occurredAt: "2030-03-01T12:00"
+              category: work
+              title: ""
+    test: current.res.status == 400
+  unknown_category:
+    desc: 未知カテゴリは 400
+    req:
+      /api/entries:
+        post:
+          body:
+            application/json:
+              occurredAt: "2030-03-01T12:00"
+              category: not_a_real_category
+              title: "x"
+    test: current.res.status == 400
+  invalid_date_query:
+    desc: 不正な date クエリは 400
+    req:
+      /api/entries?date=not-a-date:
+        get:
+          body: null
+    test: current.res.status == 400
+  missing_query:
+    desc: date も from/to もない場合は 400
+    req:
+      /api/entries:
+        get:
+          body: null
+    test: current.res.status == 400
+  not_found_edit:
+    desc: 存在しない id の編集は 404
+    req:
+      /api/entries/01ARZ3NDEKTSV4RRFFQ69G5FAV:
+        put:
+          body:
+            application/json:
+              occurredAt: "2030-03-01T12:00"
+              category: work
+              title: "ghost"
+    test: current.res.status == 404
+  not_found_delete:
+    desc: 存在しない id の削除は 404
+    req:
+      /api/entries/01ARZ3NDEKTSV4RRFFQ69G5FAW:
+        delete:
+          body: null
+    test: current.res.status == 404
+  invalid_stats_range:
+    desc: 不正な range は 400
+    req:
+      /api/stats?range=zzz:
+        get:
+          body: null
+    test: current.res.status == 400

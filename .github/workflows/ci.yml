@@ -1,0 +1,183 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# 同一 ref で重複実行をキャンセル
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: '22'
+
+jobs:
+  # ─────────────────────────────────────────────
+  # Frontend (SPA): lint + tsc -b + vite build
+  # ─────────────────────────────────────────────
+  frontend:
+    name: Frontend (lint / typecheck / build)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install root deps
+        run: npm ci
+
+      - name: oxlint
+        run: npm run lint
+
+      - name: tsc -b（型チェック）+ vite build
+        run: npm run build
+
+      - name: Upload dist artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: spa-dist
+          path: dist
+          if-no-files-found: error
+          retention-days: 7
+
+  # ─────────────────────────────────────────────
+  # Worker (in-process / Workers runtime via vitest-pool-workers)
+  # ─────────────────────────────────────────────
+  worker:
+    name: Worker (typecheck / vitest)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: worker
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: worker/package-lock.json
+
+      - name: Install worker deps
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Unit + integration (vitest-pool-workers)
+        run: npm test
+
+  # ─────────────────────────────────────────────
+  # 外部プロセス API テスト: wrangler dev + runn
+  # ─────────────────────────────────────────────
+  runn:
+    name: API (runn vs. wrangler dev)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: worker
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: worker/package-lock.json
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+          cache: false
+
+      - name: Install worker deps
+        working-directory: worker
+        run: npm ci
+
+      - name: Install runn
+        run: go install github.com/k1LoW/runn/cmd/runn@latest
+
+      - name: Apply local D1 migrations
+        working-directory: worker
+        run: npx wrangler d1 migrations apply logly --local
+
+      - name: Start wrangler dev (background)
+        working-directory: worker
+        env:
+          # Access ミドルウェアをバイパスする
+          ENV: dev
+        run: |
+          mkdir -p ../.wrangler-logs
+          nohup npx wrangler dev \
+            --local \
+            --ip 127.0.0.1 \
+            --port 8787 \
+            --var ENV:dev \
+            > ../.wrangler-logs/wrangler.log 2>&1 &
+          echo $! > ../.wrangler-logs/wrangler.pid
+
+      - name: Wait for /api/health
+        run: npx --yes wait-on http://127.0.0.1:8787/api/health --timeout 90000 --interval 500
+
+      - name: Run runn scenarios
+        run: |
+          runn run tests/runn/scenarios/*.yml --verbose
+
+      - name: Print wrangler log on failure
+        if: failure()
+        run: cat .wrangler-logs/wrangler.log || true
+
+      - name: Stop wrangler
+        if: always()
+        run: |
+          if [ -f .wrangler-logs/wrangler.pid ]; then
+            kill "$(cat .wrangler-logs/wrangler.pid)" 2>/dev/null || true
+          fi
+
+  # ─────────────────────────────────────────────
+  # E2E: Playwright (SPA, API は page.route でモック)
+  # ─────────────────────────────────────────────
+  e2e:
+    name: E2E (Playwright)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: frontend
+    env:
+      CI: 'true'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install root deps
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Build SPA (preview の入力)
+        run: npm run build
+
+      - name: Run Playwright tests
+        run: npm run test:e2e
+
+      - name: Upload Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report
+          retention-days: 7

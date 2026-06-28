@@ -1,0 +1,17 @@
+desc: GET /api/categories は固定 9 カテゴリを返す
+runners:
+  req:
+    endpoint: http://127.0.0.1:8787
+steps:
+  list:
+    desc: マスタ取得
+    req:
+      /api/categories:
+        get:
+          body: null
+    test: |
+      current.res.status == 200
+      && len(current.res.body) == 9
+      && len(filter(current.res.body, {.key == "work"})) == 1
+      && len(filter(current.res.body, {.key == "food"})) == 1
+      && len(filter(current.res.body, {.key == "other"})) == 1

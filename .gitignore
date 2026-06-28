@@ -12,6 +12,18 @@ dist
 dist-ssr
 *.local
 
+# Playwright
+playwright-report/
+test-results/
+blob-report/
+playwright/.cache/
+
+# Worker / wrangler local state
+.wrangler/
+.wrangler-logs/
+worker/.wrangler/
+worker/.dev.vars
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

@@ -1,0 +1,44 @@
+desc: 楽観ロック – expectedVersion 不一致で 409 / VERSION_CONFLICT を返す
+runners:
+  req:
+    endpoint: http://127.0.0.1:8787
+vars:
+  testDate: "2030-02-01"
+steps:
+  create:
+    desc: version=1 になる新規作成
+    req:
+      /api/entries:
+        post:
+          body:
+            application/json:
+              occurredAt: "{{ vars.testDate }}T10:00"
+              category: work
+              title: "競合検出テスト"
+    test: |
+      current.res.status == 201
+      && current.res.body.id != ""
+  conflict:
+    desc: 期待 version=5 で編集すると 409
+    req:
+      /api/entries/{{ steps.create.res.body.id }}?expectedVersion=5:
+        put:
+          body:
+            application/json:
+              occurredAt: "{{ vars.testDate }}T11:00"
+              category: work
+              title: "失敗するはず"
+    test: |
+      current.res.status == 409
+      && current.res.body.error.code == "VERSION_CONFLICT"
+  pass_through:
+    desc: 正しい version=1 なら 204 で通る
+    req:
+      /api/entries/{{ steps.create.res.body.id }}?expectedVersion=1:
+        put:
+          body:
+            application/json:
+              occurredAt: "{{ vars.testDate }}T11:00"
+              category: work
+              title: "成功するはず"
+    test: current.res.status == 204
