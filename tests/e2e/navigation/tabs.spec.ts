@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { installApiMock } from './fixtures/api-mock'
+import { installApiMock } from '../shared/api-mock'
 
 test.describe('TabBar – スクリーン切り替え', () => {
   test('Home → 記録 → 統計 → マイ を切り替えるとそれぞれの画面が描画される', async ({ page }) => {

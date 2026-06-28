@@ -145,10 +145,10 @@ jobs:
           fi
 
   # ─────────────────────────────────────────────
-  # E2E: Playwright (SPA, API は page.route でモック)
+  # E2E #1: Navigation + Visual regression（API モック）
   # ─────────────────────────────────────────────
-  e2e:
-    name: E2E (Playwright)
+  e2e-navigation:
+    name: E2E navigation / visual (mocked API)
     runs-on: ubuntu-latest
     timeout-minutes: 20
     needs: frontend
@@ -171,13 +171,64 @@ jobs:
       - name: Build SPA (preview の入力)
         run: npm run build
 
-      - name: Run Playwright tests
+      - name: Run Playwright (navigation + visual)
         run: npm run test:e2e
 
       - name: Upload Playwright report on failure
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-report
+          name: playwright-report-navigation
           path: playwright-report
+          retention-days: 7
+
+      - name: Upload visual diffs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: visual-diffs
+          path: test-results
+          retention-days: 7
+
+  # ─────────────────────────────────────────────
+  # E2E #2: Full-stack Integration（SPA → wrangler dev → D1）
+  # ─────────────────────────────────────────────
+  e2e-integration:
+    name: E2E full integration (SPA + Worker + D1)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    needs: [frontend, worker]
+    env:
+      CI: 'true'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install root deps
+        run: npm ci
+
+      - name: Install worker deps
+        working-directory: worker
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Build SPA (preview の入力)
+        run: npm run build
+
+      - name: Run Playwright (full-stack integration)
+        # Playwright の webServer が wrangler dev / vite preview を並列起動する
+        run: npm run test:e2e:integration
+
+      - name: Upload Playwright integration report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-integration
+          path: playwright-report-integration
           retention-days: 7

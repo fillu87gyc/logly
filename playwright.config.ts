@@ -5,19 +5,30 @@ const HOST = process.env.E2E_HOST ?? '127.0.0.1'
 const BASE_URL = `http://${HOST}:${PORT}`
 
 /**
- * Playwright E2E のエントリポイント。
- * - vite preview を webServer として起動し、ビルド済み SPA を本物のサーバから配信する。
- * - 既定ではモバイル Chromium（Pixel 5）の 1 プロジェクトのみ。
- * - API は各 spec が page.route で必要に応じてモックする（外部依存ゼロでテストが回る）。
+ * Navigation / 画面リグレッション用 Playwright 設定。
+ *
+ * - 対象: `tests/e2e/navigation/**` のみ
+ * - API: `page.route` で完全モック（外部依存ゼロ・高速）
+ * - 検証軸: 画面遷移、モーダル開閉、要素の表示/非表示、視覚リグレッション
+ *
+ * 実バックエンドを通した E2E は `playwright.integration.config.ts` を参照。
  */
 export default defineConfig({
-  testDir: './tests/e2e',
+  testDir: './tests/e2e/navigation',
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
   workers: process.env.CI ? 2 : undefined,
   timeout: 30_000,
-  expect: { timeout: 5_000 },
+  expect: {
+    timeout: 5_000,
+    toHaveScreenshot: {
+      // フォント読込のばらつき・サブピクセル差を許容
+      maxDiffPixelRatio: 0.02,
+      animations: 'disabled',
+      caret: 'hide',
+    },
+  },
   reporter: process.env.CI
     ? [['list'], ['html', { open: 'never', outputFolder: 'playwright-report' }]]
     : 'list',
@@ -33,8 +44,7 @@ export default defineConfig({
       use: { ...devices['Pixel 5'] },
     },
   ],
-  // CI ではビルド済み bundle を `vite preview` で配信し、ローカルでは `vite dev` で
-  // ホットに走らせる。どちらも `public/` 配下（PWA manifest / icon）を同じ URL で返す。
+  // CI ではビルド済み bundle を `vite preview` で配信し、ローカルでは `vite dev`。
   webServer: {
     command: process.env.CI
       ? `npm run preview -- --host ${HOST} --port ${PORT} --strictPort`

@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { installApiMock } from './fixtures/api-mock'
+import { installApiMock } from '../shared/api-mock'
 
 test.describe('AddModal – 記録の追加フロー', () => {
   test.beforeEach(async ({ page }) => {

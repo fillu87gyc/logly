@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { installApiMock, installApiOutage, buildEntry } from './fixtures/api-mock'
+import { installApiMock, installApiOutage, buildEntry } from '../shared/api-mock'
 
 test.describe('Home screen', () => {
   test('初期表示で「今日」ヘッダと END OF DAY を描画する（API モック空）', async ({ page }) => {
