@@ -5,11 +5,17 @@ const HOST = process.env.E2E_HOST ?? '127.0.0.1'
 const BASE_URL = `http://${HOST}:${PORT}`
 
 /**
- * Navigation / 画面リグレッション用 Playwright 設定。
+ * Navigation / 画面遷移リグレッション用 Playwright 設定。
  *
  * - 対象: `tests/e2e/navigation/**` のみ
  * - API: `page.route` で完全モック（外部依存ゼロ・高速）
- * - 検証軸: 画面遷移、モーダル開閉、要素の表示/非表示、視覚リグレッション
+ * - 検証軸: 画面遷移、モーダル開閉、要素の表示/非表示、入力フロー
+ *
+ * ピクセル単位の視覚リグレッション（`toHaveScreenshot`）はあえて含めていない。
+ * このアプリは Material Icons / Google Fonts を CDN 経由でロードしており、
+ * フォント自己ホスト化なしに環境差を吸収する safe な baseline を作るのが難しい
+ * （CDN 到達失敗時はアイコンがリテラル文字に落ち、本番では出ない見た目を「正解」
+ * にしてしまう）。リグレッションは DOM 構造ベースで担保している。
  *
  * 実バックエンドを通した E2E は `playwright.integration.config.ts` を参照。
  */
@@ -20,15 +26,7 @@ export default defineConfig({
   retries: process.env.CI ? 1 : 0,
   workers: process.env.CI ? 2 : undefined,
   timeout: 30_000,
-  expect: {
-    timeout: 5_000,
-    toHaveScreenshot: {
-      // フォント読込のばらつき・サブピクセル差を許容
-      maxDiffPixelRatio: 0.02,
-      animations: 'disabled',
-      caret: 'hide',
-    },
-  },
+  expect: { timeout: 5_000 },
   reporter: process.env.CI
     ? [['list'], ['html', { open: 'never', outputFolder: 'playwright-report' }]]
     : 'list',
