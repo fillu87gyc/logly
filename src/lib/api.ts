@@ -86,6 +86,15 @@ export const api = {
     }),
 }
 
+/** ローカル時刻の日付・時刻パーツ（壁時計基準）。 */
+export function localDateParts(d = new Date()): { date: string; time: string } {
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return {
+    date: `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`,
+    time: `${pad(d.getHours())}:${pad(d.getMinutes())}`,
+  }
+}
+
 /** API の Entry を、画面が使う Entry 形へ変換する（category はラベル表示）。 */
 export function apiEntryToEntry(a: ApiEntry): Entry {
   return {

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { HomeScreen } from './components/HomeScreen'
 import { CalendarScreen } from './components/CalendarScreen'
 import { StatsScreen } from './components/StatsScreen'
@@ -8,27 +8,32 @@ import { AddModal } from './components/AddModal'
 import { AIModal } from './components/AIModal'
 import { DetailModal } from './components/DetailModal'
 import { ENTRIES } from './lib/data'
-import { api, apiEntryToEntry } from './lib/api'
-import type { Entry, Modal, Tab } from './lib/types'
+import { api, apiEntryToEntry, localDateParts, type ApiEntry, type EntryInput } from './lib/api'
+import type { Modal, Tab } from './lib/types'
 
 function App() {
   const [tab, setTab] = useState<Tab>('home')
   const [modal, setModal] = useState<Modal>(null)
   const [selectedEntry, setSelectedEntry] = useState(0)
-  // エントリは API から取得。失敗時はモック（ENTRIES）にフォールバックして UI を保つ。
-  const [entries, setEntries] = useState<Entry[]>(ENTRIES)
+  // API 接続時は apiEntries（id 付き）を保持。未接続(null)のときはモックを表示する。
+  const [apiEntries, setApiEntries] = useState<ApiEntry[] | null>(null)
+
+  const reload = useCallback(async () => {
+    const today = localDateParts().date
+    try {
+      setApiEntries(await api.listEntriesByDay(today))
+    } catch {
+      setApiEntries(null) // バックエンド未接続時はモックにフォールバック
+    }
+  }, [])
 
   useEffect(() => {
-    const today = new Date().toISOString().slice(0, 10)
-    api
-      .listEntriesByDay(today)
-      .then((rows) => {
-        if (rows.length > 0) setEntries(rows.map(apiEntryToEntry))
-      })
-      .catch(() => {
-        /* バックエンド未接続時はモックのまま */
-      })
-  }, [])
+    void reload()
+  }, [reload])
+
+  // 表示用リスト：API 接続時は実データ、未接続時はモック。
+  const entries = apiEntries ? apiEntries.map(apiEntryToEntry) : ENTRIES
+  const selectedApi = apiEntries?.[selectedEntry]
 
   const openAdd = () => setModal('add')
   const openAI = () => setModal('ai')
@@ -37,6 +42,22 @@ function App() {
     setModal('detail')
   }
   const closeModal = () => setModal(null)
+
+  const handleCreate = async (input: EntryInput) => {
+    await api.createEntry(input)
+    await reload()
+    closeModal()
+  }
+  const handleUpdate = async (id: string, input: EntryInput) => {
+    await api.updateEntry(id, input)
+    await reload()
+    closeModal()
+  }
+  const handleDelete = async (id: string) => {
+    await api.deleteEntry(id)
+    await reload()
+    closeModal()
+  }
 
   return (
     <div
@@ -73,9 +94,17 @@ function App() {
         />
       )}
 
-      {modal === 'add' && <AddModal onClose={closeModal} onOpenAI={openAI} />}
+      {modal === 'add' && <AddModal onClose={closeModal} onOpenAI={openAI} onCreate={handleCreate} />}
       {modal === 'ai' && <AIModal onClose={closeModal} />}
-      {modal === 'detail' && <DetailModal entry={entries[selectedEntry]} onClose={closeModal} />}
+      {modal === 'detail' && entries[selectedEntry] && (
+        <DetailModal
+          entry={entries[selectedEntry]}
+          apiEntry={selectedApi}
+          onClose={closeModal}
+          onUpdate={handleUpdate}
+          onDelete={handleDelete}
+        />
+      )}
 
       <TabBar tab={tab} onTab={setTab} onOpenAdd={openAdd} />
     </div>
